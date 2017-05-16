@@ -20,6 +20,17 @@ namespace api_switchboard.BusinessLogic
 
 #endregion
 
+        /// <summary>
+        /// Connects the incoming API call with the outgoing API!
+        /// 
+        /// Passes in the payload of the incoming call, maps it to the outgoing model and
+        /// uses it as the content for the call.
+        /// 
+        /// Uses the information provided by the abstract methods. In order for this
+        /// method to work these need to be implemented correctly.
+        /// </summary>
+        /// <param name="incomingValues"></param>
+        /// <returns></returns>
         public async Task Connect(IDictionary<string, object> incomingValues)
         {
             if(incomingValues == null)
@@ -68,6 +79,10 @@ namespace api_switchboard.BusinessLogic
             }
         }
 
+        /// <summary>
+        /// Sets the headers for the API call.
+        /// </summary>
+        /// <param name="http"></param>
         private void SetHeaders(HttpClient http)
         {
             IDictionary<string, string> headers = GetOutgoingHeaders();
