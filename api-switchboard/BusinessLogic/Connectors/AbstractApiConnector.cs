@@ -130,6 +130,10 @@ namespace api_switchboard.BusinessLogic
                 {
                     http.DefaultRequestHeaders.Add(headerPair.Key, headerPair.Value);
                 }
+
+                // if no content type is set already it will be set by default
+                if(!headers.Keys.Any(key => key.Equals("content-type", StringComparison.OrdinalIgnoreCase)))
+                    http.DefaultRequestHeaders.Add("Content-Type", "application/json");
             }
         }
 
