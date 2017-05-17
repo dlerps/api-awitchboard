@@ -8,17 +8,21 @@ using Newtonsoft.Json;
 
 namespace api_switchboard.BusinessLogic
 {
+    /// <summary>
+    /// This abstract implementation of the IApiConnector includes an implementation for the 
+    /// Connect() method.
+    /// </summary>
     public abstract class AbstractApiConnector : IApiConnector
     {
+        private Dictionary<string, object> _flags;
 
-#region Abstract Methods
-
-        public abstract ApiConnectorMethod GetMethod();
-        public abstract string GetOutgoingUrl();
-        public abstract Task<IDictionary<string, object>> Map(IDictionary<string, object> incomingValues);
-        public abstract IDictionary<string, string> GetOutgoingHeaders();
-
-#endregion
+        /// <summary>
+        /// Initialises a new Abstract Api Connector.
+        /// </summary>
+        public AbstractApiConnector()
+        {
+            _flags = new Dictionary<string, object>();
+        }
 
         /// <summary>
         /// Connects the incoming API call with the outgoing API!
@@ -36,14 +40,19 @@ namespace api_switchboard.BusinessLogic
             if(incomingValues == null)
                 throw new ApiConnectorException("No such incoming values");
 
-            HttpClient http = new HttpClient();
-            ApiConnectorMethod method = GetMethod();
-            string address = GetOutgoingUrl();
-
-            SetHeaders(http);
+            await OnSetFlagsIncoming(incomingValues);
 
             // map incoming values to the outgoing model
-            IDictionary<string, object> outgoingValues = await Map(incomingValues);
+            IDictionary<string, object> outgoingValues = await OnMapModel(incomingValues);
+
+            await OnSetFlagsOutgoing(outgoingValues);
+
+            // initialising the outgoing http client & call
+            HttpClient http = new HttpClient();
+            ApiConnectorMethod method = OnDetermineMethod();
+            string address = OnDetermineUri();
+
+            SetHeaders(http);
 
             // jsonfying the outgoing values
             StringContent payload = null;
@@ -57,7 +66,7 @@ namespace api_switchboard.BusinessLogic
             {
                 throw new ApiConnectorException("Unable to serialise payload", e);
             }
-
+            
             Func<Task<HttpResponseMessage>> apiCall = null;
 
             if(method == ApiConnectorMethod.Post)
@@ -79,13 +88,41 @@ namespace api_switchboard.BusinessLogic
             }
         }
 
+#region Helpers
+
+        /// <summary>
+        /// Sets a value in the internal flags dictionary.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        protected AbstractApiConnector SetFlag<FType>(string key, FType value)
+        {
+            _flags.Add(key, value);
+            return this;
+        }
+
+        /// <summary>
+        /// Gets a value from the internal flags dictionary.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        protected FType GetFlag<FType>(string key, FType defaultValue = default(FType))
+        {
+            if(_flags.ContainsKey(key) && _flags[key] is FType)
+                return (FType) _flags[key];
+
+            return defaultValue;
+        }
+
         /// <summary>
         /// Sets the headers for the API call.
         /// </summary>
         /// <param name="http"></param>
         private void SetHeaders(HttpClient http)
         {
-            IDictionary<string, string> headers = GetOutgoingHeaders();
+            IDictionary<string, string> headers = OnGetHeaders();
 
             if(headers.Any())
             {
@@ -95,6 +132,19 @@ namespace api_switchboard.BusinessLogic
                 }
             }
         }
+
+#endregion
+
+#region Abstract Callbacks
+
+        public abstract ApiConnectorMethod OnDetermineMethod();
+        public abstract string OnDetermineUri();
+        public abstract Task<IDictionary<string, object>> OnMapModel(IDictionary<string, object> incomingValues);
+        public abstract IDictionary<string, string> OnGetHeaders();
+        public abstract Task OnSetFlagsIncoming(IDictionary<string, object> incomingValues);
+        public abstract Task OnSetFlagsOutgoing(IDictionary<string, object> outgoingValues);
+
+#endregion
 
     }
 }
