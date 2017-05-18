@@ -9581,16 +9581,16 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\api-switchboard.csproj",
+      "projectUniqueName": "D:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\api-switchboard.csproj",
       "projectName": "api-switchboard",
-      "projectPath": "d:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\api-switchboard.csproj",
-      "outputPath": "d:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\obj\\",
+      "projectPath": "D:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\api-switchboard.csproj",
+      "outputPath": "D:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\obj\\",
       "projectStyle": "PackageReference",
       "originalTargetFrameworks": [
         "netcoreapp1.1"
       ],
       "files": {
-        "lib/netcoreapp1.1/api-switchboard.dll": "d:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\bin\\placeholder\\netcoreapp1.1\\api-switchboard.dll"
+        "lib/netcoreapp1.1/api-switchboard.dll": "D:\\home\\dlerps\\dev\\api\\api-switchboard\\api-switchboard\\bin\\placeholder\\netcoreapp1.1\\api-switchboard.dll"
       },
       "frameworks": {
         "netcoreapp1.1": {
