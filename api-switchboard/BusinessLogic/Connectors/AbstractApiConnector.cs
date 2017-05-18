@@ -1,10 +1,15 @@
+using Newtonsoft.Json;
+
 using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Net.Http.Headers;
+
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
+
+using api_switchboard.BusinessLogic.Utils;
 
 namespace api_switchboard.BusinessLogic
 {
@@ -15,12 +20,14 @@ namespace api_switchboard.BusinessLogic
     public abstract class AbstractApiConnector : IApiConnector
     {
         private Dictionary<string, object> _flags;
+        private List<string> _errors;
 
         /// <summary>
         /// Initialises a new Abstract Api Connector.
         /// </summary>
         public AbstractApiConnector()
         {
+            _errors = new List<string>();
             _flags = new Dictionary<string, object>();
         }
 
@@ -44,6 +51,7 @@ namespace api_switchboard.BusinessLogic
 
             // map incoming values to the outgoing model
             IDictionary<string, object> outgoingValues = await OnMapModel(incomingValues);
+            outgoingValues.PrintDictionary();
 
             await OnSetFlagsOutgoing(outgoingValues);
 
@@ -53,39 +61,55 @@ namespace api_switchboard.BusinessLogic
             string address = OnDetermineUri();
 
             SetHeaders(http);
+            http.Timeout = TimeSpan.FromSeconds(5);
 
-            // jsonfying the outgoing values
             StringContent payload = null;
 
             try 
             {
+                // jsonfying the outgoing values
                 string stringValues = JsonConvert.SerializeObject(outgoingValues, Formatting.None);
+
                 payload = new StringContent(stringValues);
+                payload.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             }
-            catch(Exception e)
+            catch(Exception)
             {
-                throw new ApiConnectorException("Unable to serialise payload", e);
+                AddError("Unable to serialise payload");
             }
             
-            Func<Task<HttpResponseMessage>> apiCall = null;
-
-            if(method == ApiConnectorMethod.Post)
-                apiCall = async () => await http.PostAsync(address, payload);
-            else if(method == ApiConnectorMethod.Put)
-                apiCall = async () => await http.PutAsync(address, payload);
-            else if(method == ApiConnectorMethod.Patch)
-                throw new NotImplementedException("No Patch methods supported yet");
-
-            HttpResponseMessage response = await apiCall.Invoke();
-
-            // throw exception in case of unsuccessful call
-            if(!response.IsSuccessStatusCode)
+            // only do the outgoing api call if there haven't been any errors
+            if(!IsInErrorState())
             {
+                Func<Task<HttpResponseMessage>> apiCall = null;
+
+                try
+                {
+                    if(method == ApiConnectorMethod.Post)
+                        apiCall = async () => await http.PostAsync(address, payload);
+                    else if(method == ApiConnectorMethod.Put)
+                        apiCall = async () => await http.PutAsync(address, payload);
+                    else if(method == ApiConnectorMethod.Patch)
+                        throw new NotImplementedException("No Patch methods supported yet");
+                }
+                catch(Exception e)
+                {
+                    // Log the error
+                    AddError(e);
+                }
+
+                HttpResponseMessage response = await apiCall.Invoke();
                 string code = response.StatusCode.ToString();
                 string message = await response.Content.ReadAsStringAsync();
 
-                throw new ApiConnectorException(String.Format("{0} - {1}", code, message));
+                // record error in case of unsuccessful call
+                if(!response.IsSuccessStatusCode)
+                    AddError(String.Format("{0} - {1}", code, message));
             }
+
+            // if there have been errors -> throw them in an exception
+            if(IsInErrorState())
+                throw new ApiConnectorException(GetFormattedErros());
         }
 
 #region Helpers
@@ -110,10 +134,54 @@ namespace api_switchboard.BusinessLogic
         /// <returns></returns>
         protected FType GetFlag<FType>(string key, FType defaultValue = default(FType))
         {
-            if(_flags.ContainsKey(key) && _flags[key] is FType)
-                return (FType) _flags[key];
+            return _flags.ParseValue<FType>(key, defaultValue);
+        }
 
-            return defaultValue;
+        /// <summary>
+        /// Adds an error which occured to the list.
+        /// </summary>
+        /// <param name="err"></param>
+        protected void AddError(string err)
+        {
+            if(!String.IsNullOrEmpty(err))
+                _errors.Add(err);
+        }
+
+        /// <summary>
+        /// Adds an exception which occured to the list of errors.
+        /// </summary>
+        /// <param name="exception"></param>
+        protected void AddError(Exception exception)
+        {
+            if(exception != null)
+                _errors.Add(exception.Message);
+        }
+
+        /// <summary>
+        /// Gets the list of execution errors.
+        /// </summary>
+        /// <returns></returns>
+        protected List<string> GetErrors()
+        {
+            return _errors;
+        }
+
+        /// <summary>
+        /// Gets a formatted string of all errors.
+        /// </summary>
+        /// <returns></returns>
+        protected string GetFormattedErros()
+        {
+            return _errors.Any() ? String.Join("\n", _errors) : String.Empty;
+        }
+
+        /// <summary>
+        /// Tells if there have been any errors logged so far.
+        /// </summary>
+        /// <returns></returns>
+        protected bool IsInErrorState()
+        {
+            return _errors.Any();
         }
 
         /// <summary>
@@ -130,10 +198,6 @@ namespace api_switchboard.BusinessLogic
                 {
                     http.DefaultRequestHeaders.Add(headerPair.Key, headerPair.Value);
                 }
-
-                // if no content type is set already it will be set by default
-                if(!headers.Keys.Any(key => key.Equals("content-type", StringComparison.OrdinalIgnoreCase)))
-                    http.DefaultRequestHeaders.Add("Content-Type", "application/json");
             }
         }
 
@@ -148,7 +212,7 @@ namespace api_switchboard.BusinessLogic
         public abstract Task OnSetFlagsIncoming(IDictionary<string, object> incomingValues);
         public abstract Task OnSetFlagsOutgoing(IDictionary<string, object> outgoingValues);
 
-#endregion
+        #endregion
 
     }
 }
