@@ -1,5 +1,5 @@
 # api-switchboard
-A RESTful API which can receive calls and redirects them to another REST API. Great for unlisted and incompatible IFTTT services or anything else you can come up with.
+A RESTful API which can receive calls and redirects them like a proxy to other REST APIs. Great for unlisted and incompatible IFTTT services or anything else you can come up with.
 
 
 # Classes
