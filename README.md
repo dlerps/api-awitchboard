@@ -1,3 +1,5 @@
+[ ![Codeship Status for dlerps/api-switchboard](https://app.codeship.com/projects/94ba3e70-1ec8-0135-646f-16c2125e48fe/status?branch=master)](https://app.codeship.com/projects/220850)
+
 # api-switchboard
 A RESTful API which can receive calls and redirects them like a proxy to other REST APIs. Great for unlisted and incompatible IFTTT services or anything else you can come up with.
 
